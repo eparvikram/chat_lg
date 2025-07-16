@@ -9,7 +9,7 @@ name: Build and Push Docker Image
 on:
   # 1. Run automatically on every push to the 'main' branch.
   push:
-    branches: [ "main" ]
+    branches: [ "uplift" ]
   
   # 2. Allow you to run this workflow manually from the Actions tab in GitHub.
   workflow_dispatch:
