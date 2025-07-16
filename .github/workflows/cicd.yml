@@ -1,0 +1,91 @@
+# This is a GitHub Actions workflow file that defines your CI/CD pipeline.
+# It automates the process of building and deploying your Dockerized application.
+
+name: Build and Push Docker Image
+
+# --------------------------------------------------------------------------
+# TRIGGER: When does this pipeline run?
+# --------------------------------------------------------------------------
+on:
+  # 1. Run automatically on every push to the 'main' branch.
+  push:
+    branches: [ "main" ]
+  
+  # 2. Allow you to run this workflow manually from the Actions tab in GitHub.
+  workflow_dispatch:
+
+# --------------------------------------------------------------------------
+# JOBS: What tasks does this pipeline perform?
+# --------------------------------------------------------------------------
+jobs:
+  # --------------------------------------------------------------------------
+  # JOB 1: Continuous Integration (CI) - Build the Docker image
+  # --------------------------------------------------------------------------
+  build:
+    # The type of machine to run the job on
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out your repository code
+      # This downloads your source code into the runner.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx
+      # This is an advanced feature of Docker that allows for more efficient builds.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Build the Docker image
+      # This step only builds the image to verify that the Dockerfile is correct
+      # and the application can be containerized without errors. It does not push.
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false # We only build, not push, in the CI step
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-api:latest
+
+  # --------------------------------------------------------------------------
+  # JOB 2: Continuous Deployment (CD) - Push the image to Docker Hub
+  # --------------------------------------------------------------------------
+  deploy:
+    # This job only runs if the 'build' job completes successfully.
+    needs: build
+    
+    # This job only runs when you manually trigger it ('workflow_dispatch')
+    # or when a push is made to the main branch.
+    # For extra safety, you could add a specific 'if' condition to only run on manual triggers.
+    # if: github.event_name == 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out your repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Step 3: Log in to Docker Hub
+      # This uses the secrets you will configure in your GitHub repository settings.
+      # It's a secure way to handle credentials.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Step 4: Build and push the Docker image to Docker Hub
+      # This step builds the image again and pushes it to the registry.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true # This time, we push the image
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/chatbot-api:latest
+
